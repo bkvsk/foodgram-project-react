@@ -1,9 +1,18 @@
-from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
+from users.models import User
 
 
-User = get_user_model()
+class Ingredient(models.Model):
+    name = models.CharField(
+        max_length=200,
+    )
+    measurement_unit = models.CharField(
+        max_length=200,
+    )
+
+    def __str__(self):
+        return self.name
 
 
 class Tag(models.Model):
@@ -24,18 +33,6 @@ class Tag(models.Model):
         return self.name
 
 
-class Ingredient(models.Model):
-    name = models.CharField(
-        max_length=200,
-    )
-    mesurement_unit = models.CharField(
-        max_length=200,
-    )
-
-    def __str__(self):
-        return self.name
-
-
 class Recipe(models.Model):
     author = models.ForeignKey(
         User,
@@ -46,14 +43,9 @@ class Recipe(models.Model):
         max_length=200,
     )
     image = models.ImageField(
-        upload_to='recipes/',
+        upload_to='recipe_images/',
     )
     text = models.TextField()
-    ingredients = models.ManyToManyField(
-        Ingredient,
-        related_name='ingredients',
-        through='IngredientInRecipe',
-    )
     tags = models.ManyToManyField(
         Tag,
         related_name='tags',
@@ -68,12 +60,13 @@ class Recipe(models.Model):
 
 
 class IngredientInRecipe(models.Model):
-    ingredient = models.ForeignKey(
-        Ingredient,
-        on_delete=models.CASCADE,
-    )
     recipe = models.ForeignKey(
         Recipe,
+        on_delete=models.CASCADE,
+        related_name='ingredients',
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
         on_delete=models.CASCADE,
     )
     amount = models.PositiveSmallIntegerField(
@@ -83,3 +76,35 @@ class IngredientInRecipe(models.Model):
 
     def __str__(self):
         return f'{self.ingredient} in {self.recipe}'
+
+
+class FavouriteRecipe(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='favourite',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        verbose_name = 'favourite_recipe'
+        verbose_name_plural = 'favourite_recipes'
+
+
+class ShoppingCartRecipe(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='shopping_list',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        verbose_name = 'shopping_cart_recipe'
+        verbose_name_plural = 'shopping_cart_recipes'
