@@ -1,5 +1,6 @@
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
+from rest_framework.serializers import ValidationError
 
 from users.serializers import FullUserSerializer
 
@@ -59,6 +60,36 @@ class RecipeSerializer(serializers.ModelSerializer):
         'check_is_in_shopping_cart',
     )
 
+    class Meta:
+        fields = (
+            'id',
+            'tags',
+            'author',
+            'ingredients',
+            'name',
+            'image',
+            'text',
+            'cooking_time',
+            'is_in_favorites',
+            'is_in_shopping_cart',
+        )
+        model = Recipe
+        read_only_fields = ('author', 'is_in_favorites', 'is_in_shopping_cart')
+
+    def validate_ingredients(self, data):
+        ingredients = self.initial_data.get('ingredients')
+        if ingredients == []:
+            raise ValidationError('Нужно выбрать минимум 1 ингридиент!')
+        for ingredient in ingredients:
+            if int(ingredient['amount']) <= 0:
+                raise ValidationError('Количество должно быть положительным!')
+        return data
+
+    def validate_cooking_time(self, value):
+        if value <= 0:
+            raise ValidationError('Проверьте время приготовления!')
+        return value
+
     def create_recipe_ingredients(self, recipe, ingredients_data):
         for ingredient in ingredients_data:
             IngredientInRecipe.objects.create(
@@ -103,22 +134,6 @@ class RecipeSerializer(serializers.ModelSerializer):
             recipe=obj,
             user=current_user,
         ).exists()
-
-    class Meta:
-        fields = (
-            'id',
-            'tags',
-            'author',
-            'ingredients',
-            'name',
-            'image',
-            'text',
-            'cooking_time',
-            'is_in_favorites',
-            'is_in_shopping_cart'
-        )
-        model = Recipe
-        read_only_fields = ('author', 'is_in_favorites', 'is_in_shopping_cart')
 
 
 class RecipeFavouriteSerializer(serializers.ModelSerializer):

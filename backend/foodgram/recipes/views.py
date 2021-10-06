@@ -115,12 +115,9 @@ class ShoppingCartViewSet(APIView):
 class DonwloadShoppingCartViewSet(APIView):
 
     def get(self, request, pk=None):
-        shopping_cart_relations = ([
-            ri_obj['recipe__id']
-            for ri_obj in ShoppingCartRecipe.objects.filter(
+        shopping_cart_relations = ShoppingCartRecipe.objects.filter(
                 user=request.user,
-            ).values('recipe__id')
-        ])
+            ).values_list('recipe__id')
         ingredients = IngredientInRecipe.objects.values(
             'ingredient__name',
             'ingredient__measurement_unit',
