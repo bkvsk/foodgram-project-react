@@ -15,17 +15,19 @@ class User(AbstractUser):
     email = models.EmailField(
         max_length=254,
         unique=True,
+        verbose_name='почта пользователя',
     )
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
         default=Role.guest,
+        verbose_name='статус пользователя',
     )
 
     class Meta:
         ordering = ['id']
-        verbose_name = 'user'
-        verbose_name_plural = 'users'
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def save(self, *args, **kwargs):
         if not self.username:
@@ -38,11 +40,13 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name="follower",
+        verbose_name='подписчик',
     )
     following = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="following",
+        verbose_name='автор',
     )
 
     class Meta:
@@ -52,5 +56,5 @@ class Follow(models.Model):
                 name='unique subscriptions'
             )
         ]
-        verbose_name = 'follow'
-        verbose_name_plural = 'follows'
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'

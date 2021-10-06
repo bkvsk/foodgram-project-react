@@ -1,12 +1,14 @@
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import (Ingredient, Recipe, FavouriteRecipe, IngredientInRecipe,
+from .models import (FavouriteRecipe, Ingredient, IngredientInRecipe, Recipe,
                      ShoppingCartRecipe, Tag)
+from foodgram.pagination import CustomPaginator
 from .serializers import IngredientSerializer, RecipeSerializer, TagSerializer
 
 
@@ -25,6 +27,7 @@ class TagViewSet(viewsets.ModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
+    pagination_class = CustomPaginator
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -51,16 +54,16 @@ class FavouriteViewSet(APIView):
         except FavouriteRecipe.DoesNotExist:
             FavouriteRecipe.objects.create(
                 user=request.user,
-                recipe=recipe
+                recipe=recipe,
             )
             return Response(serializer.data)
 
     def delete(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
         deleted_recipe_favouritie = FavouriteRecipe.objects.filter(
-                user=request.user,
-                recipe=recipe
-            ).delete()
+            user=request.user,
+            recipe=recipe,
+        ).delete()
         if deleted_recipe_favouritie[0] > 0:
             return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -85,13 +88,13 @@ class ShoppingCartViewSet(APIView):
         try:
             ShoppingCartRecipe.objects.get(
                 user=request.user,
-                recipe=recipe
+                recipe=recipe,
             )
             return Response(status=status.HTTP_400_BAD_REQUEST)
         except ShoppingCartRecipe.DoesNotExist:
             ShoppingCartRecipe.objects.create(
                 user=request.user,
-                recipe=recipe
+                recipe=recipe,
             )
             return Response(serializer.data)
 
@@ -100,7 +103,7 @@ class ShoppingCartViewSet(APIView):
 
         deleted_from_shopping_cart = ShoppingCartRecipe.objects.filter(
                 user=request.user,
-                recipe=recipe
+                recipe=recipe,
             ).delete()
 
         if deleted_from_shopping_cart[0] > 0:
@@ -112,20 +115,31 @@ class ShoppingCartViewSet(APIView):
 class DonwloadShoppingCartViewSet(APIView):
 
     def get(self, request, pk=None):
-        shopping_cart_relations = (
-            [ri_obj['recipe__id'] for ri_obj in ShoppingCartRecipe.objects.filter(user=request.user).values('recipe__id')]
-        )
+        shopping_cart_relations = ([
+            ri_obj['recipe__id']
+            for ri_obj in ShoppingCartRecipe.objects.filter(
+                user=request.user,
+            ).values('recipe__id')
+        ])
         ingredients = IngredientInRecipe.objects.values(
             'ingredient__name',
-            'ingredient__measurement_unit'
-        ).annotate(count=Sum('amount')).filter(recipe__id__in=shopping_cart_relations)
+            'ingredient__measurement_unit',
+        ).annotate(
+            count=Sum('amount'),
+        ).filter(recipe__id__in=shopping_cart_relations)
 
         file_content = ''
-        file_content = '\n'.join([f"{ingredient['ingredient__name']} {ingredient['count']} {ingredient['ingredient__measurement_unit']}" for ingredient in ingredients])
+        file_content = '\n'.join([
+            f"{ingredient['ingredient__name']} "
+            f"{ingredient['count']} "
+            f"{ingredient['ingredient__measurement_unit']}"
+            for ingredient in ingredients
+        ])
 
         response = HttpResponse(
             file_content,
             content_type='text/plain; charset=UTF-8'
         )
-        response['Content-Disposition'] = ('attachment; filename=shopping_cart.txt')
+        response['Content-Disposition'] = ('attachment; '
+                                           'filename=shopping_cart.txt')
         return response
