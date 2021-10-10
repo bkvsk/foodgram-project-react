@@ -7,7 +7,8 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SECRET_KEY = os.getenv('PRJ_SECRET_KEY')
+# SECRET_KEY = os.getenv('PRJ_SECRET_KEY')
+SECRET_KEY = 'du-r8n(02px@a9yp3odssrtm-5jtu-(^=2$)v2yym97-&kj20l'
 
 DEBUG = True
 
