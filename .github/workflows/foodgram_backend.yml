@@ -42,7 +42,7 @@ jobs:
             sudo docker pull bkvsk/foodgram_frontend:v1.0
             sudo docker-compose stop
             sudo docker-compose rm infra_backend_1
-            touch .env
+            touch /home/backend/foodgram/.env
             echo PRJ_SECRET_KEY=${{ secrets.PRJ_SECRET_KEY }} >> .env
             echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
             echo DB_NAME=${{ secrets.DB_NAME }} >> .env
