@@ -39,12 +39,10 @@ jobs:
           stack_file_name: docker-compose.yaml
           script: |
             sudo docker pull bkvsk/foodgram_backend:latest
-            sudo docker pull bkvsk/foodgram_frontend:v1
+            sudo docker pull bkvsk/foodgram_frontend:v1.0
             sudo docker-compose stop
             sudo docker-compose rm infra_backend_1
-            # Создаст файл для переменных окружения
             touch .env
-            # Наполнит файл переменными окружения из секретов GitHub
             echo PRJ_SECRET_KEY=${{ secrets.PRJ_SECRET_KEY }} >> .env
             echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
             echo DB_NAME=${{ secrets.DB_NAME }} >> .env
