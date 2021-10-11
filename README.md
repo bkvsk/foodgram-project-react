@@ -33,7 +33,7 @@ pass - admin321
 
 Перейдите в каталог командой:
 
-``` cd foodgram-project-react/backend/ ``` 
+``` cd foodgram-project-react/infra/ ``` 
 
 Выполните команду для запуска контейнера:
 
