@@ -2,10 +2,9 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 
-from users.serializers import FullUserSerializer
-
 from .models import (FavouriteRecipe, Ingredient, IngredientInRecipe, Recipe,
                      ShoppingCartRecipe, Tag)
+from users.serializers import FullUserSerializer
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -76,13 +75,32 @@ class RecipeSerializer(serializers.ModelSerializer):
         model = Recipe
         read_only_fields = ('author', 'is_in_favorites', 'is_in_shopping_cart')
 
+    def validate_tags(self, data):
+        tags = self.initial_data.get('tags')
+        tags_set = set()
+        for tag in tags:
+            id = tag.get('id')
+            if id in tags_set:
+                raise serializers.ValidationError(
+                    'Теги в рецепте должны быть уникальными!',
+                )
+            tags_set.add(id)
+        return data
+
     def validate_ingredients(self, data):
         ingredients = self.initial_data.get('ingredients')
-        if ingredients == []:
+        ingredients_set = set()
+        if not ingredients:
             raise ValidationError('Нужно выбрать минимум 1 ингридиент!')
         for ingredient in ingredients:
             if int(ingredient['amount']) <= 0:
                 raise ValidationError('Количество должно быть положительным!')
+            id = ingredient.get('id')
+            if id in ingredients_set:
+                raise serializers.ValidationError(
+                    'Ингредиент в рецепте не должен повторяться!',
+                )
+            ingredients_set.add(id)
         return data
 
     def validate_cooking_time(self, value):

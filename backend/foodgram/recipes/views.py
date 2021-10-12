@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from .models import (FavouriteRecipe, Ingredient, IngredientInRecipe, Recipe,
                      ShoppingCartRecipe, Tag)
-from foodgram.pagination import CustomPaginator
+from .pagination import CustomPaginator
 from .serializers import IngredientSerializer, RecipeSerializer, TagSerializer
 
 
