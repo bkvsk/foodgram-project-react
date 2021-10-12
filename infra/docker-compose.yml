@@ -21,7 +21,10 @@ services:
       - ../frontend/:/app/result_build/
 
   backend:
-    image: bkvsk/foodgram_backend:latest
+    build:
+      context: ../backend/foodgram
+      dockerfile: Dockerfile
+#    image: bkvsk/foodgram_backend:latest
     volumes:
       - static_value:/code/static/
       - media_value:/code/media/

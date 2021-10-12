@@ -78,9 +78,10 @@ class RecipeSerializer(serializers.ModelSerializer):
     def validate_tags(self, data):
         tags = self.initial_data.get('tags')
         tags_set = set()
+        if not tags:
+            raise serializers.ValidationError('Добавьте хотя бы один тег!')
         for tag in tags:
-            id = tag.get('id')
-            if id in tags_set:
+            if tag in tags_set:
                 raise serializers.ValidationError(
                     'Теги в рецепте должны быть уникальными!',
                 )
