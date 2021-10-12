@@ -22,7 +22,7 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
     amount = serializers.IntegerField()
 
     class Meta:
-        fields = ('id', 'name', 'amount')
+        fields = ('id', 'amount')
         model = IngredientInRecipe
 
 
@@ -76,10 +76,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         read_only_fields = ('author', 'is_in_favorites', 'is_in_shopping_cart')
 
     def validate_tags(self, data):
+        tags = self.initial_data.get('tags')
         tags_set = set()
-        if not data:
+        if not tags:
             raise serializers.ValidationError('Добавьте хотя бы один тег!')
-        for tag in data:
+        for tag in tags:
             if tag in tags_set:
                 raise serializers.ValidationError(
                     'Теги в рецепте должны быть уникальными!',
