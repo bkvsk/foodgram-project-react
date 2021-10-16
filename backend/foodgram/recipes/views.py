@@ -1,142 +1,111 @@
-from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
+from .filters import RecipeFilter, IngredientNameFilter
 from .models import (FavouriteRecipe, Ingredient, IngredientInRecipe, Recipe,
                      ShoppingCartRecipe, Tag)
 from .pagination import CustomPaginator
-from .serializers import IngredientSerializer, RecipeSerializer, TagSerializer
+from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly
+from .serializers import (CropRecipeSerializer, IngredientSerializer,
+                          RecipeSerializer, TagSerializer)
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminOrReadOnly,)
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     pagination_class = None
+    filter_backends = (IngredientNameFilter,)
+    search_fields = ('^name',)
 
 
 class TagViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminOrReadOnly,)
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     pagination_class = None
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsOwnerOrReadOnly]
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     pagination_class = CustomPaginator
+    filter_class = RecipeFilter
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+    @action(detail=True, methods=['get', 'delete'],
+            permission_classes=[IsAuthenticated])
+    def favorite(self, request, pk=None):
+        if request.method == 'GET':
+            return self.add_obj(FavouriteRecipe, request.user, pk)
+        elif request.method == 'DELETE':
+            return self.delete_obj(FavouriteRecipe, request.user, pk)
+        return None
 
-class FavouriteViewSet(APIView):
+    @action(detail=True, methods=['get', 'delete'],
+            permission_classes=[IsAuthenticated])
+    def shopping_cart(self, request, pk=None):
+        if request.method == 'GET':
+            return self.add_obj(ShoppingCartRecipe, request.user, pk)
+        elif request.method == 'DELETE':
+            return self.delete_obj(ShoppingCartRecipe, request.user, pk)
+        return None
 
-    def get(self, request, pk=None):
-        try:
-            recipe = Recipe.objects.get(id=pk)
-            serializer = RecipeSerializer(
-                recipe,
-                context={'request': request},
-            )
-        except Recipe.DoesNotExist:
-            return Response(
-                {'error': 'Recipe does not exist'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+    @action(detail=False, methods=['get'],
+            permission_classes=[IsAuthenticated])
+    def download_shopping_cart(self, request):
+        user = request.user
+        shopping_cart = user.shopping_list.all()
+        list = {}
+        for item in shopping_cart:
+            recipe = item.recipe
+            ingredients = IngredientInRecipe.objects.filter(recipe=recipe)
+            for ingredient in ingredients:
+                amount = ingredient.amount
+                name = ingredient.ingredient.name
+                measurement_unit = ingredient.ingredient.measurement_unit
+                if name not in list:
+                    list[name] = {
+                        'measurement_unit': measurement_unit,
+                        'amount': amount
+                    }
+                else:
+                    list[name]['amount'] = (
+                            list[name]['amount'] + amount
+                    )
 
-        try:
-            FavouriteRecipe.objects.get(user=request.user, recipe=recipe)
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        except FavouriteRecipe.DoesNotExist:
-            FavouriteRecipe.objects.create(
-                user=request.user,
-                recipe=recipe,
-            )
-            return Response(serializer.data)
+        shopping_list = []
+        for item in list:
+            shopping_list.append(f'{item} - {list[item]["amount"]} '
+                                 f'{list[item]["measurement_unit"]} \n')
+        response = HttpResponse(shopping_list, 'Content-Type: text/plain')
+        response['Content-Disposition'] = 'attachment; filename="shoplist.txt"'
 
-    def delete(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
-        deleted_recipe_favouritie = FavouriteRecipe.objects.filter(
-            user=request.user,
-            recipe=recipe,
-        ).delete()
-        if deleted_recipe_favouritie[0] > 0:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-
-class ShoppingCartViewSet(APIView):
-
-    def get(self, request, pk=None):
-        try:
-            recipe = Recipe.objects.get(id=pk)
-            serializer = RecipeSerializer(
-                recipe,
-                context={'request': request},
-            )
-        except Recipe.DoesNotExist:
-            return Response(
-                {'error': 'Recipe does not exist'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        try:
-            ShoppingCartRecipe.objects.get(
-                user=request.user,
-                recipe=recipe,
-            )
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        except ShoppingCartRecipe.DoesNotExist:
-            ShoppingCartRecipe.objects.create(
-                user=request.user,
-                recipe=recipe,
-            )
-            return Response(serializer.data)
-
-    def delete(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
-
-        deleted_from_shopping_cart = ShoppingCartRecipe.objects.filter(
-                user=request.user,
-                recipe=recipe,
-            ).delete()
-
-        if deleted_from_shopping_cart[0] > 0:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-
-class DonwloadShoppingCartViewSet(APIView):
-
-    def get(self, request, pk=None):
-        shopping_cart_relations = ShoppingCartRecipe.objects.filter(
-                user=request.user,
-            ).values_list('recipe__id')
-        ingredients = IngredientInRecipe.objects.values(
-            'ingredient__name',
-            'ingredient__measurement_unit',
-        ).annotate(
-            count=Sum('amount'),
-        ).filter(recipe__id__in=shopping_cart_relations)
-
-        file_content = ''
-        file_content = '\n'.join([
-            f"{ingredient['ingredient__name']} "
-            f"{ingredient['count']} "
-            f"{ingredient['ingredient__measurement_unit']}"
-            for ingredient in ingredients
-        ])
-
-        response = HttpResponse(
-            file_content,
-            content_type='text/plain; charset=UTF-8'
-        )
-        response['Content-Disposition'] = ('attachment; '
-                                           'filename=shopping_cart.txt')
         return response
+
+    def add_obj(self, model, user, pk):
+        if model.objects.filter(user=user, recipe__id=pk).exists():
+            return Response({
+                'errors': 'Рецепт уже добавлен в список'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        recipe = get_object_or_404(Recipe, id=pk)
+        model.objects.create(user=user, recipe=recipe)
+        serializer = CropRecipeSerializer(recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete_obj(self, model, user, pk):
+        obj = model.objects.filter(user=user, recipe__id=pk)
+        if obj.exists():
+            obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'errors': 'Рецепт уже удален'
+        }, status=status.HTTP_400_BAD_REQUEST)

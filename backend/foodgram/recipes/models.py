@@ -72,7 +72,7 @@ class Recipe(models.Model):
     )
     cooking_time = models.IntegerField(
         validators=[
-            MinValueValidator(1,message='the value must be a natural number'),
+            MinValueValidator(1, message='the value must be a natural number'),
         ],
         default=1,
         verbose_name='время приготовления',
@@ -148,6 +148,7 @@ class ShoppingCartRecipe(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        related_name='shopping_list',
         verbose_name='пользователь',
     )
 
