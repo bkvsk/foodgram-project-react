@@ -12,8 +12,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
-#      - ./.env
-      - ../backend/foodgram/.env
+      - ./.env
+#      - ../backend/foodgram/.env
 
   frontend:
     image: bkvsk/foodgram_frontend:v1.0
@@ -21,10 +21,10 @@ services:
       - ../frontend/:/app/result_build/
 
   backend:
-    build:
-      context: ../backend/foodgram
-      dockerfile: Dockerfile
-#    image: bkvsk/foodgram_backend:latest
+#    build:
+#      context: ../backend/foodgram
+#      dockerfile: Dockerfile
+    image: bkvsk/foodgram_backend:latest
     volumes:
       - static_value:/code/static/
       - media_value:/code/media/
@@ -32,8 +32,8 @@ services:
     depends_on:
       - db
     env_file:
-#      - ./.env
-      - ../backend/foodgram/.env
+      - ./.env
+#      - ../backend/foodgram/.env
 
   nginx:
     image: nginx:1.19.6
