@@ -4,8 +4,7 @@ from rest_framework.serializers import ValidationError
 
 from users.models import Follow
 from users.serializers import CustomUserSerializer
-from .models import (FavouriteRecipe, Ingredient, IngredientInRecipe, Recipe,
-                     ShoppingCartRecipe, Tag)
+from .models import (Ingredient, IngredientInRecipe, Recipe, Tag)
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -43,19 +42,15 @@ class RecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     tags = TagSerializer(read_only=True, many=True)
     ingredients = IngredientInRecipeSerializer(required=True, many=True)
-    is_favorited = serializers.SerializerMethodField(
-        'check_is_favorited',
-    )
-    is_in_shopping_cart = serializers.SerializerMethodField(
-        'check_is_in_shopping_cart',
-    )
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         fields = ('id', 'tags', 'author', 'ingredients', 'is_favorited',
                   'is_in_shopping_cart', 'name', 'image', 'text',
                   'cooking_time')
         model = Recipe
-        read_only_fields = ('author', 'is_in_favorites', 'is_in_shopping_cart')
+        read_only_fields = ('author', 'is_favorited', 'is_in_shopping_cart')
 
     def validate_tags(self, data):
         tags = self.initial_data.get('tags')
@@ -116,25 +111,17 @@ class RecipeSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
-    def check_is_favorited(self, obj):
-        current_user = self.context['request'].user
-        if current_user.is_anonymous:
+    def get_is_favorited(self, obj):
+        user = self.context.get('request').user
+        if user.is_anonymous:
             return False
+        return Recipe.objects.filter(favorites__user=user, id=obj.id).exists()
 
-        return FavouriteRecipe.objects.filter(
-            recipe=obj,
-            user=current_user,
-        ).exists()
-
-    def check_is_in_shopping_cart(self, obj):
-        current_user = self.context['request'].user
-        if current_user.is_anonymous:
+    def get_is_in_shopping_cart(self, obj):
+        user = self.context.get('request').user
+        if user.is_anonymous:
             return False
-
-        return ShoppingCartRecipe.objects.filter(
-            recipe=obj,
-            user=current_user,
-        ).exists()
+        return Recipe.objects.filter(cart__user=user, id=obj.id).exists()
 
 
 class CropRecipeSerializer(serializers.ModelSerializer):

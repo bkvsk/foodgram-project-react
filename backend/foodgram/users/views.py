@@ -7,11 +7,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from recipes.pagination import CustomPaginator
-from recipes.serializers import FollowSerializer
+from recipes.serializers import CustomUserSerializer, FollowSerializer
 from .models import Follow, User
 
 
 class CustomUserViewSet(UserViewSet):
+    queryset = User.objects.all()
+    serializer_class = CustomUserSerializer
     pagination_class = CustomPaginator
 
     @action(detail=True, permission_classes=[IsAuthenticated])
