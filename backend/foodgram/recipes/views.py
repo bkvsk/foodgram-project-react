@@ -63,7 +63,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
         user = request.user
-        shopping_cart = user.shopping_list.all()
+        shopping_cart = user.cart.all()
         list = {}
         for item in shopping_cart:
             recipe = item.recipe
